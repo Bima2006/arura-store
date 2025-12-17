@@ -1,0 +1,487 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  ShoppingBag, Plus, Trash2, Send, Settings, X, 
+  Package, Lock, LogOut, Search, Image as ImageIcon,
+  Info, ChevronRight, Star, Truck, ShieldCheck,
+  Moon, Sun, Phone, Mail, MapPin, MessageCircle,
+  ArrowRight, Instagram, Facebook, LayoutGrid
+} from 'lucide-react';
+
+const App = () => {
+  // --- State ---
+  const [theme, setTheme] = useState('dark');
+  const [activePage, setActivePage] = useState('shop');
+  const [products, setProducts] = useState([
+    { 
+      id: 1, 
+      code: 'AR-001', 
+      name: 'Luxury Gold Chronograph', 
+      price: 12500, 
+      image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=400', 
+      category: 'Watches',
+      description: 'Exclusive gold-plated timepiece with sapphire crystal. Engineered for precision and style.'
+    },
+    { 
+      id: 2, 
+      code: 'AR-002', 
+      name: 'Midnight Headphones', 
+      price: 8900, 
+      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=400', 
+      category: 'Electronics',
+      description: 'Superior sound quality with active noise cancellation and ergonomic design.'
+    }
+  ]);
+
+  const [cart, setCart] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAuth, setIsAuth] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  
+  const [newProduct, setNewProduct] = useState({ 
+    code: '', name: '', price: '', image: '', category: 'General', description: '' 
+  });
+
+  // Load persistence
+  useEffect(() => {
+    const saved = localStorage.getItem('arura_final_products');
+    if (saved) setProducts(JSON.parse(saved));
+    const savedTheme = localStorage.getItem('arura_theme');
+    if (savedTheme) setTheme(savedTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('arura_theme', newTheme);
+  };
+
+  const saveToStorage = (updated) => {
+    setProducts(updated);
+    localStorage.setItem('arura_final_products', JSON.stringify(updated));
+  };
+
+  // Fixed missing addProduct function
+  const addProduct = (e) => {
+    e.preventDefault();
+    if (!newProduct.code || !newProduct.name || !newProduct.price) {
+      return;
+    }
+    const productToAdd = {
+      ...newProduct,
+      id: Date.now(),
+      price: parseFloat(newProduct.price)
+    };
+    const updated = [...products, productToAdd];
+    saveToStorage(updated);
+    setNewProduct({ code: '', name: '', price: '', image: '', category: 'General', description: '' });
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setNewProduct({ ...newProduct, image: reader.result });
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const login = () => {
+    if (adminPassword === 'admin123') {
+      setIsAuth(true);
+      setAdminPassword('');
+    }
+  };
+
+  const sendWhatsApp = (item = null) => {
+    const phone = "947XXXXXXXX"; 
+    let text = `*ARURA PREMIUM ORDER*\n\n`;
+    if (item) {
+      text += `Product: [${item.code}] ${item.name}\nPrice: LKR ${item.price}\n`;
+    } else {
+      cart.forEach((i, idx) => { text += `${idx + 1}. [${i.code}] ${i.name} - LKR ${i.price}\n`; });
+      const total = cart.reduce((s, i) => s + i.price, 0);
+      text += `\n*Total Amount: LKR ${total}*`;
+    }
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const categories = ['All', ...new Set(products.map(p => p.category))];
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.code.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCat = selectedCategory === 'All' || p.category === selectedCategory;
+    return matchesSearch && matchesCat;
+  });
+
+  return (
+    <div className={`min-h-screen transition-colors duration-500 font-sans text-xs selection:bg-[#D4AF37]/30 ${theme === 'dark' ? 'bg-[#050505] text-slate-400' : 'bg-slate-50 text-slate-600'}`}>
+      
+      {/* Dynamic Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-full h-full blur-[180px] rounded-full transition-opacity duration-1000 ${theme === 'dark' ? 'bg-[#D4AF37]/5 opacity-30' : 'bg-[#D4AF37]/10 opacity-20'}`}></div>
+      </div>
+
+      {/* Navbar */}
+      <nav className="sticky top-0 z-[60] p-4">
+        <div className={`max-w-6xl mx-auto flex justify-between items-center border rounded-2xl px-6 py-2 shadow-2xl transition-all ${theme === 'dark' ? 'bg-black/60 backdrop-blur-3xl border-white/10' : 'bg-white/80 backdrop-blur-3xl border-slate-100'}`}>
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActivePage('shop')}>
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-black text-[#D4AF37] font-black border border-[#D4AF37]/30 text-base">A</div>
+            <span className={`text-lg font-black tracking-tighter uppercase ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>ARURA</span>
+          </div>
+
+          <div className="hidden md:flex items-center gap-8 font-bold tracking-[0.2em] uppercase text-[9px]">
+            <button onClick={() => {setActivePage('shop'); setSelectedCategory('All');}} className={`hover:text-[#D4AF37] transition ${activePage === 'shop' ? 'text-[#D4AF37]' : ''}`}>Store</button>
+            <button onClick={() => setActivePage('contact')} className={`hover:text-[#D4AF37] transition ${activePage === 'contact' ? 'text-[#D4AF37]' : ''}`}>Contact</button>
+            <button onClick={() => setIsAdmin(true)} className="hover:text-[#D4AF37] transition">Admin</button>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button onClick={toggleTheme} className={`p-2 rounded-full transition ${theme === 'dark' ? 'text-[#D4AF37] hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}>
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button onClick={() => setIsCartOpen(true)} className={`relative p-2 rounded-full border transition ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-100 border-slate-200 text-slate-800'}`}>
+              <ShoppingBag size={18} />
+              {cart.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#D4AF37] text-black text-[8px] flex items-center justify-center rounded-full font-black">{cart.length}</span>}
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <main className="max-w-6xl mx-auto px-4 pb-24">
+        
+        {activePage === 'shop' && !isAdmin && (
+          <div className="animate-in fade-in duration-1000">
+            {/* LARGE CENTERED LOGO AREA */}
+            <div className="flex flex-col items-center justify-center pt-16 pb-12">
+               <div className="w-32 h-32 md:w-48 md:h-48 mb-8 relative group flex items-center justify-center">
+                  <div className="absolute inset-0 bg-[#D4AF37]/20 blur-3xl rounded-full scale-75 group-hover:scale-100 transition-transform duration-700"></div>
+                  <img src="Logo .png" alt="ARURA" className="w-full h-full object-contain relative z-10 drop-shadow-[0_0_15px_rgba(212,175,55,0.3)]" 
+                       onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+                  <div className="hidden absolute inset-0 bg-black/40 border border-[#D4AF37]/30 rounded-[2rem] flex items-center justify-center text-4xl font-black text-[#D4AF37]">A</div>
+               </div>
+               <h1 className={`text-4xl md:text-5xl font-black mb-4 tracking-tighter text-center uppercase ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                  ARURA <span className="text-[#D4AF37]">PREMIUM</span> STUDIO
+               </h1>
+               <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.5em] text-center mb-10">Authentic Luxury Since 2025</p>
+               
+               {/* Search Area */}
+               <div className="relative w-full max-w-lg mb-12">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="SEARCH THE COLLECTION..."
+                  className={`w-full border rounded-2xl py-4 pl-12 pr-4 outline-none transition-all text-[10px] font-bold tracking-widest uppercase ${theme === 'dark' ? 'bg-white/5 border-white/5 text-white focus:border-[#D4AF37]/40' : 'bg-white border-slate-200 text-slate-900 focus:border-[#D4AF37]'}`}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              {/* Category Filter */}
+              <div className="flex flex-wrap justify-center gap-3 mb-12">
+                {categories.map(cat => (
+                  <button 
+                    key={cat} 
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-6 py-2 rounded-full border text-[9px] font-black uppercase tracking-widest transition-all ${selectedCategory === cat ? 'bg-[#D4AF37] border-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20' : theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500 hover:text-white' : 'bg-white border-slate-200 text-slate-500 hover:text-slate-900'}`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Product Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {filteredProducts.map(product => (
+                <div 
+                  key={product.id} 
+                  onClick={() => setSelectedProduct(product)}
+                  className={`group cursor-pointer border rounded-3xl overflow-hidden transition-all duration-500 ${theme === 'dark' ? 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-[#D4AF37]/30' : 'bg-white border-slate-100 hover:shadow-2xl hover:border-[#D4AF37]/30'}`}
+                >
+                  <div className="aspect-[4/5] overflow-hidden relative">
+                    <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                    <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[8px] font-black text-[#D4AF37] uppercase tracking-widest">
+                      {product.category}
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <div className="text-[8px] font-black text-[#D4AF37] mb-1 tracking-widest">{product.code}</div>
+                    <h3 className={`font-bold text-sm mb-4 line-clamp-1 ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{product.name}</h3>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-lg font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>LKR {product.price.toLocaleString()}</span>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setCart([...cart, product]); }}
+                        className="w-10 h-10 bg-[#D4AF37] text-black rounded-xl flex items-center justify-center hover:scale-110 transition active:scale-90"
+                      >
+                        <Plus size={20} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activePage === 'contact' && !isAdmin && (
+          <div className="animate-in slide-in-from-bottom-10 duration-700 max-w-4xl mx-auto py-12">
+            <div className="text-center mb-16">
+              <h2 className={`text-4xl font-black mb-4 tracking-tighter ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>GET IN TOUCH</h2>
+              <div className="w-20 h-1 bg-[#D4AF37] mx-auto mb-6"></div>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8 text-center mb-12">
+              <div className={`p-10 rounded-[2.5rem] border transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-xl'}`}>
+                <div className="w-14 h-14 bg-[#D4AF37]/10 rounded-full flex items-center justify-center mx-auto mb-6 text-[#D4AF37]"><Phone size={28}/></div>
+                <h4 className={`font-black mb-2 text-xs uppercase tracking-widest ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>Call us</h4>
+                <p className="text-slate-500 font-bold">+94 7X XXX XXXX</p>
+              </div>
+              <div className={`p-10 rounded-[2.5rem] border transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-xl'}`}>
+                <div className="w-14 h-14 bg-[#D4AF37]/10 rounded-full flex items-center justify-center mx-auto mb-6 text-[#D4AF37]"><Mail size={28}/></div>
+                <h4 className={`font-black mb-2 text-xs uppercase tracking-widest ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>Email</h4>
+                <p className="text-slate-500 font-bold uppercase">INFO@ARURA.COM</p>
+              </div>
+              <div className={`p-10 rounded-[2.5rem] border transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-xl'}`}>
+                <div className="w-14 h-14 bg-[#D4AF37]/10 rounded-full flex items-center justify-center mx-auto mb-6 text-[#D4AF37]"><MapPin size={28}/></div>
+                <h4 className={`font-black mb-2 text-xs uppercase tracking-widest ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>Studio</h4>
+                <p className="text-slate-500 font-bold uppercase tracking-tighter">COLOMBO, SRI LANKA</p>
+              </div>
+            </div>
+
+            <div className={`p-10 md:p-16 rounded-[3rem] border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-2xl'}`}>
+              <h3 className={`text-2xl font-black mb-10 ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>SEND AN INQUIRY</h3>
+              <div className="grid md:grid-cols-2 gap-6 mb-6">
+                <input type="text" placeholder="YOUR NAME" className={`p-5 rounded-2xl outline-none border transition font-bold ${theme === 'dark' ? 'bg-black border-white/5 text-white focus:border-[#D4AF37]/50' : 'bg-slate-50 border-slate-100 focus:border-[#D4AF37]'}`} />
+                <input type="email" placeholder="EMAIL ADDRESS" className={`p-5 rounded-2xl outline-none border transition font-bold ${theme === 'dark' ? 'bg-black border-white/5 text-white focus:border-[#D4AF37]/50' : 'bg-slate-50 border-slate-100 focus:border-[#D4AF37]'}`} />
+              </div>
+              <textarea placeholder="HOW CAN WE ASSIST YOU?" className={`w-full p-5 rounded-2xl outline-none border transition h-40 mb-10 font-bold ${theme === 'dark' ? 'bg-black border-white/5 text-white focus:border-[#D4AF37]/50' : 'bg-slate-50 border-slate-100 focus:border-[#D4AF37]'}`} />
+              <button className="bg-[#D4AF37] text-black w-full py-6 rounded-2xl font-black uppercase tracking-[0.3em] text-xs hover:bg-white transition-all shadow-2xl shadow-[#D4AF37]/10">Submit Message</button>
+            </div>
+          </div>
+        )}
+
+        {/* Admin Login/Panel */}
+        {isAdmin && (
+          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4">
+            <div className={`max-w-2xl w-full p-10 md:p-16 rounded-[3rem] border animate-in zoom-in duration-300 ${theme === 'dark' ? 'bg-[#0a0a0a] border-white/10' : 'bg-white border-slate-200'}`}>
+              {!isAuth ? (
+                <div className="text-center">
+                  <div className="w-20 h-20 bg-[#D4AF37]/10 rounded-full flex items-center justify-center mx-auto mb-8 text-[#D4AF37] border border-[#D4AF37]/30">
+                    <Lock size={32} />
+                  </div>
+                  <h2 className={`text-2xl font-black mb-10 tracking-widest ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>STAFF ENTRANCE</h2>
+                  <input 
+                    type="password" 
+                    className={`w-full p-5 rounded-2xl mb-8 outline-none border transition-all text-center text-xl tracking-[1em] ${theme === 'dark' ? 'bg-black border-white/10 text-white focus:border-[#D4AF37]' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-[#D4AF37]'}`} 
+                    placeholder="••••"
+                    value={adminPassword}
+                    onChange={e => setAdminPassword(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && login()}
+                  />
+                  <div className="flex gap-4">
+                    <button onClick={() => setIsAdmin(false)} className={`flex-1 p-5 rounded-2xl font-black uppercase tracking-widest transition ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-100 hover:bg-slate-200'}`}>Cancel</button>
+                    <button onClick={login} className="flex-1 p-5 bg-[#D4AF37] text-black rounded-2xl font-black uppercase tracking-widest hover:bg-white transition shadow-xl shadow-[#D4AF37]/20">Login</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-10 max-h-[85vh] overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="flex justify-between items-center">
+                    <h2 className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>INVENTORY CONTROL</h2>
+                    <button onClick={() => setIsAuth(false)} className="text-red-500 font-black tracking-widest hover:underline uppercase text-[10px]">Logout</button>
+                  </div>
+                  
+                  <form onSubmit={addProduct} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <input type="text" placeholder="PRODUCT CODE" className={`p-4 rounded-xl outline-none border font-bold ${theme === 'dark' ? 'bg-black border-white/5 text-white' : 'bg-slate-50 border-slate-100'}`} value={newProduct.code} onChange={e => setNewProduct({...newProduct, code: e.target.value})} />
+                      <input type="text" placeholder="CATEGORY" className={`p-4 rounded-xl outline-none border font-bold ${theme === 'dark' ? 'bg-black border-white/5 text-white' : 'bg-slate-50 border-slate-100'}`} value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} />
+                    </div>
+                    <input type="text" placeholder="PRODUCT NAME" className={`w-full p-4 rounded-xl outline-none border font-bold ${theme === 'dark' ? 'bg-black border-white/5 text-white' : 'bg-slate-50 border-slate-100'}`} value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+                    <input type="number" placeholder="LKR PRICE" className={`w-full p-4 rounded-xl outline-none border font-bold ${theme === 'dark' ? 'bg-black border-white/5 text-white' : 'bg-slate-50 border-slate-100'}`} value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
+                    <textarea placeholder="PRODUCT DESCRIPTION" className={`w-full p-4 rounded-xl outline-none border h-24 font-bold ${theme === 'dark' ? 'bg-black border-white/5 text-white' : 'bg-slate-50 border-slate-100'}`} value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} />
+                    
+                    <input type="file" id="file-admin" className="hidden" onChange={handleImageUpload} />
+                    <label htmlFor="file-admin" className={`block w-full border-2 border-dashed p-10 text-center rounded-2xl cursor-pointer hover:bg-[#D4AF37]/5 transition ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'}`}>
+                      {newProduct.image ? <img src={newProduct.image} className="w-24 h-24 mx-auto rounded-xl shadow-2xl" alt="Preview" /> : <div className="flex flex-col items-center gap-3 text-slate-500"><ImageIcon size={32}/><span className="text-[10px] font-black tracking-widest">UPLOAD PRODUCT IMAGE</span></div>}
+                    </label>
+                    
+                    <button type="submit" className="w-full bg-[#D4AF37] p-5 rounded-2xl font-black text-black uppercase tracking-[0.2em] text-xs hover:bg-white transition-all shadow-2xl shadow-[#D4AF37]/20">Publish To Store</button>
+                    <button type="button" onClick={() => setIsAdmin(false)} className="w-full text-slate-500 font-bold pt-4 hover:text-white transition uppercase text-[10px] tracking-widest">Return Home</button>
+                  </form>
+
+                  <div className="pt-10 border-t border-white/5">
+                    <h3 className="font-black uppercase tracking-[0.3em] text-[9px] text-slate-500 mb-6">LIVE STOCK ({products.length})</h3>
+                    <div className="space-y-4">
+                      {products.map(p => (
+                        <div key={p.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 transition-hover hover:border-[#D4AF37]/30">
+                          <div className="flex items-center gap-4">
+                            <img src={p.image} className="w-12 h-12 rounded-xl object-cover" alt="" />
+                            <div><div className="text-[9px] font-black text-[#D4AF37] tracking-widest uppercase">{p.code}</div><div className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{p.name}</div></div>
+                          </div>
+                          <button onClick={() => saveToStorage(products.filter(item => item.id !== p.id))} className="text-red-500 p-2 hover:bg-red-500/10 rounded-full transition"><Trash2 size={18}/></button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Product Details Modal */}
+      {selectedProduct && (
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4">
+          <div className={`max-w-4xl w-full rounded-[3rem] overflow-hidden flex flex-col md:flex-row shadow-2xl animate-in zoom-in duration-500 border ${theme === 'dark' ? 'bg-[#080808] border-white/10' : 'bg-white border-slate-200'}`}>
+            <div className="md:w-1/2 aspect-square relative bg-white">
+              <img src={selectedProduct.image} className="w-full h-full object-cover" alt="" />
+              <button onClick={() => setSelectedProduct(null)} className="absolute top-8 left-8 p-3 bg-black/50 backdrop-blur-xl rounded-full text-white md:hidden transition hover:scale-110"><X size={20}/></button>
+            </div>
+            <div className="md:w-1/2 p-10 md:p-14 flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-start mb-8">
+                  <div className="flex-1 pr-4">
+                    <span className="text-[#D4AF37] font-black tracking-[0.4em] text-[9px] uppercase">{selectedProduct.code}</span>
+                    <h2 className={`text-4xl font-black mt-2 leading-tight uppercase tracking-tighter ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{selectedProduct.name}</h2>
+                  </div>
+                  <button onClick={() => setSelectedProduct(null)} className="hidden md:block text-slate-500 hover:text-[#D4AF37] transition"><X size={32}/></button>
+                </div>
+                
+                <div className="flex items-center gap-2 mb-10">
+                  <div className="flex text-[#D4AF37]"><Star size={14} fill="currentColor"/><Star size={14} fill="currentColor"/><Star size={14} fill="currentColor"/><Star size={14} fill="currentColor"/><Star size={14} fill="currentColor"/></div>
+                  <span className="text-[9px] text-slate-500 font-black tracking-[0.3em] uppercase ml-2">Premium Authenticity</span>
+                </div>
+
+                <div className={`text-4xl font-black mb-10 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>LKR {selectedProduct.price.toLocaleString()}</div>
+                
+                <p className={`leading-relaxed mb-12 text-sm italic font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                   {selectedProduct.description || 'This exclusive ARURA masterpiece represents the pinnacle of luxury, meticulously designed for the discerning individual.'}
+                </p>
+                
+                <div className="grid grid-cols-2 gap-8 mb-12 pt-6 border-t border-white/5">
+                  <div className="flex items-center gap-4 text-slate-500"><Truck size={20} className="text-[#D4AF37]"/><span className="text-[9px] font-black uppercase tracking-widest">Fast Delivery</span></div>
+                  <div className="flex items-center gap-4 text-slate-500"><ShieldCheck size={20} className="text-[#D4AF37]"/><span className="text-[9px] font-black uppercase tracking-widest">Secured Item</span></div>
+                </div>
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <button 
+                  onClick={() => { setCart([...cart, selectedProduct]); setSelectedProduct(null); }}
+                  className={`flex-1 py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:scale-[1.03] active:scale-95 ${theme === 'dark' ? 'bg-white text-black' : 'bg-slate-900 text-white'}`}
+                >
+                  Bag it
+                </button>
+                <button 
+                  onClick={() => sendWhatsApp(selectedProduct)}
+                  className="flex-1 bg-[#D4AF37] text-black py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-white transition-all hover:scale-[1.03] active:scale-95 shadow-xl shadow-[#D4AF37]/10"
+                >
+                  <Send size={18} /> Purchase
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cart Sidebar */}
+      {isCartOpen && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex justify-end">
+          <div className={`w-full max-w-sm border-l h-full p-10 flex flex-col animate-in slide-in-from-right duration-500 shadow-2xl ${theme === 'dark' ? 'bg-[#080808] border-white/5' : 'bg-white border-slate-100'}`}>
+            <div className="flex justify-between items-center mb-12">
+              <h2 className={`text-2xl font-black tracking-tighter ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>YOUR BAG</h2>
+              <button onClick={() => setIsCartOpen(false)} className="text-slate-500 hover:text-red-500 transition"><X size={32}/></button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto space-y-6 custom-scrollbar pr-2">
+              {cart.length === 0 ? (
+                <div className="text-center py-32 opacity-20">
+                  <ShoppingBag size={80} className="mx-auto mb-6" />
+                  <p className="font-black text-[10px] uppercase tracking-[0.4em]">Empty Bag</p>
+                </div>
+              ) : (
+                cart.map((item, idx) => (
+                  <div key={idx} className={`flex gap-5 items-center p-5 rounded-3xl border transition shadow-sm ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
+                    <img src={item.image} className="w-16 h-16 rounded-2xl object-cover" alt="" />
+                    <div className="flex-1">
+                      <div className="text-[8px] font-black text-[#D4AF37] tracking-widest uppercase mb-1">{item.code}</div>
+                      <div className={`font-bold text-xs mb-1 line-clamp-1 ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{item.name}</div>
+                      <div className={`font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>LKR {item.price.toLocaleString()}</div>
+                    </div>
+                    <button onClick={() => { let nc = [...cart]; nc.splice(idx, 1); setCart(nc); }} className="text-slate-600 hover:text-red-500 transition"><Trash2 size={20}/></button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className={`pt-10 border-t mt-6 ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
+              <div className="flex justify-between items-end mb-10">
+                <span className="font-bold text-slate-500 uppercase text-[9px] tracking-[0.4em]">Subtotal</span>
+                <span className={`text-3xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                  {cart.reduce((s,i) => s+i.price, 0).toLocaleString()} <span className="text-[10px] text-slate-500 ml-1">LKR</span>
+                </span>
+              </div>
+              <button onClick={() => sendWhatsApp()} className="w-full bg-[#D4AF37] text-black py-6 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] flex items-center justify-center gap-3 hover:bg-white transition-all shadow-2xl shadow-[#D4AF37]/10">
+                <Send size={20}/> Checkout WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Footer */}
+      <footer className={`py-24 border-t transition-colors ${theme === 'dark' ? 'border-white/5 bg-[#050505]' : 'border-slate-100 bg-white shadow-[0_-20px_50px_rgba(0,0,0,0.02)]'}`}>
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="grid md:grid-cols-3 gap-20 mb-20 text-center md:text-left">
+            <div>
+              <div className="flex items-center gap-3 mb-10 justify-center md:justify-start">
+                <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center text-[#D4AF37] font-black border border-[#D4AF37]/20 text-lg">A</div>
+                <span className={`text-2xl font-black tracking-tighter uppercase ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>ARURA</span>
+              </div>
+              <p className="text-[10px] font-bold leading-relaxed uppercase tracking-[0.4em] text-slate-500">
+                The ultimate destination for luxury goods in Sri Lanka. Precision, elegance, and exclusivity guaranteed.
+              </p>
+            </div>
+            <div className="flex flex-col items-center">
+              <h4 className={`font-black text-[10px] tracking-[0.5em] mb-12 uppercase ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Stay Connected</h4>
+              <div className="flex gap-12">
+                <button className="text-slate-500 hover:text-[#D4AF37] transition-all hover:scale-125"><Instagram size={28}/></button>
+                <button className="text-slate-500 hover:text-[#D4AF37] transition-all hover:scale-125"><Facebook size={28}/></button>
+                <button className="text-slate-500 hover:text-[#D4AF37] transition-all hover:scale-125" onClick={() => window.open('https://wa.me/947XXXXXXXX')}><MessageCircle size={28}/></button>
+              </div>
+            </div>
+            <div className="text-center md:text-right">
+              <h4 className={`font-black text-[10px] tracking-[0.5em] mb-12 uppercase ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Quick Access</h4>
+              <div className="flex flex-col gap-5 text-[10px] font-black tracking-[0.3em] uppercase text-slate-500">
+                <button onClick={() => setActivePage('shop')} className="hover:text-[#D4AF37] transition">The Studio</button>
+                <button onClick={() => setActivePage('contact')} className="hover:text-[#D4AF37] transition">Contact Us</button>
+                <button onClick={() => setIsAdmin(true)} className="hover:text-[#D4AF37] transition">Staff Portal</button>
+              </div>
+            </div>
+          </div>
+          <div className="pt-12 border-t border-white/5 text-center">
+            <p className="text-[9px] font-black tracking-[0.8em] uppercase opacity-30">
+              &copy; 2025 ARURA PREMIUM STUDIO. DESIGNED FOR THE ELITE.
+            </p>
+          </div>
+        </div>
+      </footer>
+
+      <style>
+        {`
+          @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+          body { font-family: 'Space Grotesk', sans-serif; margin: 0; padding: 0; }
+          .custom-scrollbar::-webkit-scrollbar { width: 3px; }
+          .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+          .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.2); border-radius: 10px; }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(212, 175, 55, 0.6); }
+          .animate-in { animation: fadeIn 0.8s ease-out forwards; }
+          @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        `}
+      </style>
+    </div>
+  );
+};
+
+export default App;
