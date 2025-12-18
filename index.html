@@ -169,7 +169,7 @@
             const handleCheckout = (e) => {
                 e.preventDefault();
                 const orderText = `*නව ඇනවුමක්!*%0A%0A*නම:* ${checkoutData.name}%0A*දුරකථන:* ${checkoutData.phone}%0A*ලිපිනය:* ${checkoutData.address}%0A%0A*භාණ්ඩ:*%0A${cart.map(i => `- ${i.name} (${i.code})`).join('%0A')}%0A%0A*මුළු මුදල:* LKR ${totalPrice.toLocaleString()}`;
-                window.open(`https://wa.me/94765796218?text=${orderText}`, '_blank');
+                window.open(`https://wa.me/94725850044?text=${orderText}`, '_blank');
                 setCart([]);
                 setIsCheckoutOpen(false);
                 setIsCartOpen(false);
