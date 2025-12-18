@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARURA Online Shopping</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & Babel for logic -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@0.344.0"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Space Grotesk', sans-serif; overflow-x: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #c14db8; border-radius: 10px; }
+        .animate-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .glass-effect { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // Icon Component with robust error handling
+        const Icon = ({ name, size = 18, className = "" }) => {
+            const [iconSvg, setIconSvg] = useState('');
+
+            useEffect(() => {
+                const renderIcon = () => {
+                    if (window.lucide && window.lucide.icons[name]) {
+                        const icon = window.lucide.icons[name];
+                        const parts = icon[2].map(node => {
+                            const [tag, attrs] = node;
+                            const attrStr = Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ');
+                            return `<${tag} ${attrStr}></${tag}>`;
+                        }).join('');
+                        
+                        setIconSvg(`
+                            <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-${name.toLowerCase()} ${className}">
+                                ${parts}
+                            </svg>
+                        `);
+                    }
+                };
+                renderIcon();
+            }, [name, size, className]);
+
+            return <span className="inline-flex items-center" dangerouslySetInnerHTML={{ __html: iconSvg }} />;
+        };
+
+        const App = () => {
+            const [theme, setTheme] = useState('dark');
+            const [activePage, setActivePage] = useState('shop');
+            const [products, setProducts] = useState([
+                { 
+                    id: 1, 
+                    code: 'AR-001', 
+                    name: 'Luxury Gold Chronograph', 
+                    price: 12500, 
+                    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=600', 
+                    category: 'Watches',
+                    description: 'මෙය ඉතා ඉහළ ප්‍රමිතියෙන් යුත්, රත්‍රන් ආලේපිත අත්ඔරලෝසුවකි. මෙහි sapphire crystal වීදුරු භාවිතා කර ඇත.'
+                },
+                { 
+                    id: 2, 
+                    code: 'AR-002', 
+                    name: 'Midnight Headphones', 
+                    price: 8900, 
+                    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=600', 
+                    category: 'Electronics',
+                    description: 'පැහැදිලි ශබ්දය සහ බාහිර ශබ්ද අවම කරන (Noise Cancellation) තාක්ෂණය සහිත හෙඩ්ෆෝනයකි.'
+                }
+            ]);
+
+            const [cart, setCart] = useState([]);
+            const [isAdminOpen, setIsAdminOpen] = useState(false);
+            const [isAuth, setIsAuth] = useState(false);
+            const [adminPassword, setAdminPassword] = useState('');
+            const [searchQuery, setSearchQuery] = useState('');
+            const [selectedProduct, setSelectedProduct] = useState(null);
+            const [isCartOpen, setIsCartOpen] = useState(false);
+            const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+            const [checkoutData, setCheckoutData] = useState({ name: '', phone: '', address: '' });
+            const [newProduct, setNewProduct] = useState({ code: '', name: '', price: '', image: '', category: 'General', description: '' });
+
+            useEffect(() => {
+                const saved = localStorage.getItem('arura_products');
+                if (saved) setProducts(JSON.parse(saved));
+                const savedTheme = localStorage.getItem('arura_theme');
+                if (savedTheme) setTheme(savedTheme || 'dark');
+            }, []);
+
+            const toggleTheme = () => {
+                const newTheme = theme === 'dark' ? 'light' : 'dark';
+                setTheme(newTheme);
+                localStorage.setItem('arura_theme', newTheme);
+            };
+
+            // Image handling for Local Storage (Converts file to Base64)
+            const handleImageChange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        setNewProduct({ ...newProduct, image: reader.result });
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const handleAddProduct = (e) => {
+                e.preventDefault();
+                const productToAdd = { ...newProduct, id: Date.now(), price: parseFloat(newProduct.price) };
+                const updatedProducts = [...products, productToAdd];
+                setProducts(updatedProducts);
+                localStorage.setItem('arura_products', JSON.stringify(updatedProducts));
+                setNewProduct({ code: '', name: '', price: '', image: '', category: 'General', description: '' });
+                setIsAdminOpen(false);
+                setIsAuth(false);
+            };
+
+            const addToCart = (product) => {
+                setCart([...cart, { ...product, cartId: Date.now() }]);
+            };
+
+            const removeFromCart = (cartId) => {
+                setCart(cart.filter(item => item.cartId !== cartId));
+            };
+
+            const totalPrice = cart.reduce((sum, item) => sum + item.price, 0);
+
+            const filteredProducts = products.filter(p => 
+                p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                p.code.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+
+            const handleCheckout = (e) => {
+                e.preventDefault();
+                const orderText = `*නව ඇනවුමක්!*%0A%0A*නම:* ${checkoutData.name}%0A*දුරකථන:* ${checkoutData.phone}%0A*ලිපිනය:* ${checkoutData.address}%0A%0A*භාණ්ඩ:*%0A${cart.map(i => `- ${i.name} (${i.code})`).join('%0A')}%0A%0A*මුළු මුදල:* LKR ${totalPrice.toLocaleString()}`;
+                window.open(`https://wa.me/94700000000?text=${orderText}`, '_blank');
+                setCart([]);
+                setIsCheckoutOpen(false);
+                setIsCartOpen(false);
+            };
+
+            return (
+                <div className={`min-h-screen transition-colors duration-500 ${theme === 'dark' ? 'bg-[#050505] text-slate-400' : 'bg-slate-50 text-slate-600'}`}>
+                    
+                    {/* Navigation */}
+                    <nav className="sticky top-0 z-50 p-4">
+                        <div className={`max-w-6xl mx-auto flex justify-between items-center border rounded-2xl px-6 py-2 shadow-2xl glass-effect ${theme === 'dark' ? 'bg-black/60 border-white/10' : 'bg-white/80 border-slate-200'}`}>
+                            <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActivePage('shop')}>
+                                {/* Updated Logo Section */}
+                                <div className="w-10 h-10 rounded-lg overflow-hidden border border-[#c14db8]/30 bg-black flex items-center justify-center">
+                                    <img src="Logo .png" alt="ARURA Logo" className="w-full h-full object-contain" />
+                                </div>
+                                <span className={`text-xl font-black tracking-tighter uppercase ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>ARURA</span>
+                            </div>
+
+                            <div className="hidden md:flex items-center gap-8 font-bold text-[10px] uppercase tracking-widest">
+                                <button onClick={() => setActivePage('shop')} className={`hover:text-[#c14db8] transition-colors ${activePage === 'shop' ? 'text-[#c14db8]' : ''}`}>Store</button>
+                                <button onClick={() => setActivePage('contact')} className={`hover:text-[#c14db8] transition-colors ${activePage === 'contact' ? 'text-[#c14db8]' : ''}`}>Contact</button>
+                                <button onClick={() => setIsAdminOpen(true)} className="hover:text-[#c14db8] transition-colors">Admin</button>
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                                <button onClick={toggleTheme} className="p-2 hover:scale-110 transition-transform">
+                                    <Icon name={theme === 'dark' ? 'Sun' : 'Moon'} />
+                                </button>
+                                <button onClick={() => setIsCartOpen(true)} className="relative p-2 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-colors">
+                                    <Icon name="ShoppingBag" />
+                                    {cart.length > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#c14db8] text-black text-[10px] flex items-center justify-center rounded-full font-black">{cart.length}</span>}
+                                </button>
+                            </div>
+                        </div>
+                    </nav>
+
+                    {/* Main Shop View */}
+                    <main className="max-w-6xl mx-auto px-4 pb-24 pt-10">
+                        {activePage === 'shop' && (
+                            <div className="animate-in">
+                                <header className="text-center mb-16">
+                                    {/* Logo in Home header */}
+                                    <img src="Logo .png" alt="Logo" className="w-24 h-24 mx-auto mb-6 drop-shadow-2xl" />
+                                    <h1 className={`text-5xl font-black mb-4 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>ARURA <span className="text-[#c14db8]">PREMIUM</span></h1>
+                                    <p className="text-[10px] tracking-[0.4em] uppercase opacity-50">Masterpieces of Design</p>
+                                    <div className="relative max-w-lg mx-auto mt-12">
+                                        <input 
+                                            type="text" 
+                                            placeholder="භාණ්ඩයේ නම හෝ කේතය (Search)..." 
+                                            className={`w-full border p-4 px-6 rounded-2xl outline-none focus:border-[#c14db8] transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                        />
+                                    </div>
+                                </header>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                    {filteredProducts.map(p => (
+                                        <div key={p.id} className={`group border rounded-3xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-2xl ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:border-[#D4AF37]/30' : 'bg-white border-slate-100'}`} onClick={() => setSelectedProduct(p)}>
+                                            <div className="aspect-[4/5] overflow-hidden bg-slate-800">
+                                                <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                            </div>
+                                            <div className="p-5">
+                                                <span className="text-[10px] font-bold text-[#c14db8] uppercase">{p.code}</span>
+                                                <h3 className={`font-bold mt-1 mb-3 truncate ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{p.name}</h3>
+                                                <div className="flex justify-between items-center">
+                                                    <span className={`font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>LKR {p.price.toLocaleString()}</span>
+                                                    <button onClick={(e) => { e.stopPropagation(); addToCart(p); }} className="bg-[#c14db8] text-black p-2.5 rounded-xl hover:bg-black hover:text-[#c14db8] transition-all active:scale-95">
+                                                        <Icon name="Plus" size={18} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activePage === 'contact' && (
+                            <div className="max-w-2xl mx-auto py-20 text-center animate-in">
+                                <h2 className="text-4xl font-black mb-12 text-[#c14db8]">CONTACT US</h2>
+                                <div className="space-y-6">
+                                    <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex items-center gap-6">
+                                        <Icon name="Mail" size={28} className="text-[#c14db8]" />
+                                        <div className="text-left"><p className="text-xs uppercase font-bold opacity-50">Email Address</p><p className="text-xl font-bold">info@arurapremium.com</p></div>
+                                    </div>
+                                    <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex items-center gap-6">
+                                        <Icon name="Phone" size={28} className="text-[#c14db8]" />
+                                        <div className="text-left"><p className="text-xs uppercase font-bold opacity-50">WhatsApp</p><p className="text-xl font-bold">+94 70 000 0000</p></div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Product Details Modal */}
+                    {selectedProduct && (
+                        <div className="fixed inset-0 z-[100] bg-black/90 glass-effect flex items-center justify-center p-4">
+                            <div className={`max-w-4xl w-full grid md:grid-cols-2 rounded-[2.5rem] overflow-hidden border animate-in shadow-2xl ${theme === 'dark' ? 'bg-[#0a0a0a] border-white/10' : 'bg-white border-slate-200'}`}>
+                                <div className="aspect-square md:aspect-auto bg-slate-800">
+                                    <img src={selectedProduct.image} className="w-full h-full object-cover" alt={selectedProduct.name} />
+                                </div>
+                                <div className="p-8 md:p-12 relative flex flex-col justify-center">
+                                    <button onClick={() => setSelectedProduct(null)} className="absolute top-6 right-6 p-2 hover:rotate-90 transition-transform opacity-50"><Icon name="X" size={24} /></button>
+                                    <span className="text-xs font-bold text-[#c14db8] tracking-widest uppercase mb-2">{selectedProduct.code}</span>
+                                    <h2 className={`text-3xl font-black mb-6 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{selectedProduct.name}</h2>
+                                    <p className="leading-relaxed opacity-70 mb-8">{selectedProduct.description || "මෙම භාණ්ඩය පිළිබඳ විස්තරයක් ලබා දී නොමැත."}</p>
+                                    <div className="flex items-center justify-between mt-auto border-t border-white/10 pt-8">
+                                        <div className="text-2xl font-black text-[#c14db8]">LKR {selectedProduct.price.toLocaleString()}</div>
+                                        <button onClick={() => { addToCart(selectedProduct); setSelectedProduct(null); }} className="bg-[#c14db8] text-black px-8 py-4 rounded-2xl font-black hover:scale-105 transition-transform flex items-center gap-3">
+                                            <Icon name="ShoppingCart" /> මල්ලට එක් කරන්න
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Cart Sidebar */}
+                    {isCartOpen && (
+                        <div className="fixed inset-0 z-[110] bg-black/80 flex justify-end">
+                            <div className={`w-full max-w-md h-full shadow-2xl flex flex-col animate-in ${theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
+                                <div className="p-6 border-b border-white/10 flex justify-between items-center">
+                                    <h2 className="text-xl font-black flex items-center gap-3"><Icon name="ShoppingBag" /> ඔබේ මල්ල ({cart.length})</h2>
+                                    <button onClick={() => setIsCartOpen(false)}><Icon name="X" /></button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                                    {cart.length === 0 ? (
+                                        <div className="text-center py-20 opacity-30"><Icon name="Ghost" size={48} className="mx-auto mb-4" /><p>මල්ල හිස්ව පවතී</p></div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {cart.map(item => (
+                                                <div key={item.cartId} className="flex gap-4 items-center bg-white/5 p-3 rounded-2xl">
+                                                    <img src={item.image} className="w-16 h-16 rounded-xl object-cover" />
+                                                    <div className="flex-1">
+                                                        <h4 className="font-bold text-sm truncate">{item.name}</h4>
+                                                        <p className="text-[#c14db8] font-black">LKR {item.price.toLocaleString()}</p>
+                                                    </div>
+                                                    <button onClick={() => removeFromCart(item.cartId)} className="text-red-500/50 hover:text-red-500"><Icon name="Trash2" size={16} /></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="p-8 border-t border-white/10 space-y-4">
+                                    <div className="flex justify-between text-xl font-black"><span>Total:</span><span className="text-[#c14db8]">LKR {totalPrice.toLocaleString()}</span></div>
+                                    <button 
+                                        disabled={cart.length === 0}
+                                        onClick={() => setIsCheckoutOpen(true)}
+                                        className="w-full bg-[#c14db8] text-black py-4 rounded-2xl font-black hover:scale-[1.02] transition-transform disabled:opacity-20"
+                                    >
+                                        CHECKOUT (ඇනවුම් කරන්න)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Checkout Modal */}
+                    {isCheckoutOpen && (
+                        <div className="fixed inset-0 z-[120] bg-black/95 flex items-center justify-center p-4">
+                            <div className={`max-w-md w-full p-8 rounded-[2.5rem] border shadow-2xl ${theme === 'dark' ? 'bg-[#0a0a0a] border-white/10' : 'bg-white border-slate-200'}`}>
+                                <h2 className="text-2xl font-black text-[#c14db8] mb-8 text-center uppercase tracking-widest">CHECKOUT DETAILS</h2>
+                                <form onSubmit={handleCheckout} className="space-y-4">
+                                    <input type="text" placeholder="ඔබේ නම (Full Name)" className="w-full bg-black/40 border border-white/10 p-4 rounded-xl outline-none focus:border-[#c14db8]" required onChange={e => setCheckoutData({...checkoutData, name: e.target.value})} />
+                                    <input type="tel" placeholder="දුරකථන අංකය (Phone)" className="w-full bg-black/40 border border-white/10 p-4 rounded-xl outline-none focus:border-[#c14db8]" required onChange={e => setCheckoutData({...checkoutData, phone: e.target.value})} />
+                                    <textarea placeholder="බඩු එවිය යුතු ලිපිනය (Address)" className="w-full bg-black/40 border border-white/10 p-4 rounded-xl outline-none focus:border-[#c14db8] h-24" required onChange={e => setCheckoutData({...checkoutData, address: e.target.value})}></textarea>
+                                    
+                                    <div className="bg-[#c14db8]/10 p-4 rounded-xl mb-4 border border-[#c14db8]/30">
+                                        <p className="text-xs uppercase font-bold opacity-60 mb-1">Total Payable</p>
+                                        <p className="text-2xl font-black text-[#c14db8]">LKR {totalPrice.toLocaleString()}</p>
+                                    </div>
+
+                                    <div className="flex gap-4">
+                                        <button type="button" onClick={() => setIsCheckoutOpen(false)} className="flex-1 font-bold opacity-40">Cancel</button>
+                                        <button type="submit" className="flex-2 bg-[#c14db8] text-black px-10 py-4 rounded-xl font-black hover:scale-105 transition-transform">ඇනවුම ස්ථිර කරන්න</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Admin Panel Modal */}
+                    {isAdminOpen && (
+                        <div className="fixed inset-0 z-[130] bg-black/95 flex items-center justify-center p-4">
+                            <div className={`max-w-md w-full p-8 rounded-[2.5rem] border shadow-2xl ${theme === 'dark' ? 'bg-[#0a0a0a] border-white/10' : 'bg-white border-slate-200'}`}>
+                                {!isAuth ? (
+                                    <div className="text-center">
+                                        <Icon name="ShieldAlert" size={40} className="text-[#c14db8] mx-auto mb-6" />
+                                        <h2 className="text-xl font-black text-[#c14db8] mb-8 tracking-widest uppercase">Admin Login</h2>
+                                        <input type="password" placeholder="මුරපදය" className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-center mb-6 outline-none focus:border-[#c14db8]" onChange={(e) => setAdminPassword(e.target.value)} />
+                                        <div className="flex gap-4">
+                                            <button onClick={() => setIsAdminOpen(false)} className="flex-1 opacity-40">Cancel</button>
+                                            <button onClick={() => adminPassword === 'admin123' && setIsAuth(true)} className="flex-1 bg-[#c14db8] py-4 rounded-xl text-black font-black">Login</button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <form onSubmit={handleAddProduct} className="space-y-4">
+                                        <div className="flex justify-between items-center mb-6"><h2 className="font-black text-[#c14db8]">Add Product</h2><button type="button" onClick={() => setIsAuth(false)} className="text-xs text-red-500 font-bold">Logout</button></div>
+                                        <input type="text" placeholder="Name" className="w-full bg-black/20 border border-white/10 p-3 rounded-xl" required onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <input type="text" placeholder="Code" className="w-full bg-black/20 border border-white/10 p-3 rounded-xl" required onChange={e => setNewProduct({...newProduct, code: e.target.value})} />
+                                            <input type="number" placeholder="Price" className="w-full bg-black/20 border border-white/10 p-3 rounded-xl" required onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
+                                        </div>
+                                        
+                                        {/* Image Upload Feature */}
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold uppercase opacity-50 block">Product Image</label>
+                                            <div className="flex gap-2">
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    className="hidden" 
+                                                    id="file-upload" 
+                                                    onChange={handleImageChange}
+                                                />
+                                                <label 
+                                                    htmlFor="file-upload" 
+                                                    className="flex-1 cursor-pointer bg-white/5 border border-dashed border-white/20 p-4 rounded-xl flex flex-col items-center justify-center hover:border-[#c14db8] transition-colors"
+                                                >
+                                                    <Icon name="Upload" size={24} className="mb-2 opacity-50" />
+                                                    <span className="text-[10px] font-bold">Upload from Device</span>
+                                                </label>
+                                                {newProduct.image && (
+                                                    <div className="w-20 h-20 rounded-xl overflow-hidden border border-[#c14db8]">
+                                                        <img src={newProduct.image} className="w-full h-full object-cover" alt="Preview" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <input 
+                                                type="text" 
+                                                placeholder="Or Paste Image URL" 
+                                                value={newProduct.image.startsWith('data:') ? '' : newProduct.image}
+                                                className="w-full bg-black/20 border border-white/10 p-3 rounded-xl text-xs" 
+                                                onChange={e => setNewProduct({...newProduct, image: e.target.value})} 
+                                            />
+                                        </div>
+
+                                        <textarea placeholder="Description" className="w-full bg-black/20 border border-white/10 p-3 rounded-xl h-20" onChange={e => setNewProduct({...newProduct, description: e.target.value})}></textarea>
+                                        <button type="submit" className="w-full bg-[#c14db8] py-4 rounded-xl text-black font-black">Publish</button>
+                                        <button type="button" onClick={() => setIsAdminOpen(false)} className="w-full opacity-40 text-xs">Close</button>
+                                    </form>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
